@@ -60,6 +60,42 @@ resource "azurerm_monitor_activity_log_alert" "main" {
 }
 ```
 
+## Example Usage (Multiple Subscriptions)
+
+```hcl
+resource "azurerm_resource_group" "example" {
+  name     = "example-resources"
+  location = "West Europe"
+}
+
+resource "azurerm_monitor_action_group" "main" {
+  name                = "example-actiongroup"
+  resource_group_name = azurerm_resource_group.example.name
+  short_name          = "p0action"
+}
+
+resource "azurerm_monitor_activity_log_alert" "multi_sub" {
+  name                = "example-multisub-alert"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = "global"
+
+  # Deploy this alert into a specific target subscription.
+  # The service principal must have Contributor (or equivalent) on this subscription.
+  subscription_id = "00000000-0000-0000-0000-000000000000"
+
+  # Monitor activity from that same subscription (or list multiple subscription IDs).
+  scopes = ["/subscriptions/00000000-0000-0000-0000-000000000000"]
+
+  criteria {
+    category = "ServiceHealth"
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.main.id
+  }
+}
+```
+
 ## Arguments Reference
 
 The following arguments are supported:
@@ -67,11 +103,12 @@ The following arguments are supported:
 * `name` - (Required) The name of the activity log alert. Changing this forces a new resource to be created.
 * `resource_group_name` - (Required) The name of the resource group in which to create the activity log alert instance. Changing this forces a new resource to be created.
 * `location` - (Required) The Azure Region where the activity log alert rule should exist. Possible values are `global`, `westeurope`, `northeurope`, and `eastus2euap`. Changing this forces a new resource to be created.
-* `scopes` - (Required) The Scope at which the Activity Log should be applied. A list of strings which could be a resource group , or a subscription, or a resource ID (such as a Storage Account).
+* `scopes` - (Required) The Scope at which the Activity Log should be applied. A list of strings which could be a resource group, or a subscription, or a resource ID (such as a Storage Account). To monitor activity across multiple subscriptions, provide each subscription ID here (e.g. `/subscriptions/00000000-...`). The service principal used by Terraform must have read access on every subscription listed.
 * `criteria` - (Required) A `criteria` block as defined below.
 * `action` - (Optional) One or more `action` blocks as defined below.
 * `enabled` - (Optional) Should this Activity Log Alert be enabled? Defaults to `true`.
 * `description` - (Optional) The description of this activity log alert.
+* `subscription_id` - (Optional) The ID of the Subscription in which to create this Activity Log Alert. Defaults to the subscription of the current provider configuration. Changing this forces a new resource to be created.
 * `tags` - (Optional) A mapping of tags to assign to the resource.
 
 ---
